@@ -1,3 +1,2 @@
-color 1= #FF6C2F
-color 2= #FFFFFF
-color 3= #887D71
+the note has to say the day of the week. e.g monday, tuesday, wednessday, thursday, friday, suturday and sunday
+

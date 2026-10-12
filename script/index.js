@@ -21,6 +21,7 @@ const heroList = document.querySelector('.hero-list');
 const addNoteBtn = document.getElementById('add-notes');
 const headerDateEl = document.getElementById('date');
 const headerTimeEl = document.getElementById('time');
+const headerDayEl = document.getElementById('dayoftheweek');
 
 // Modal Elements
 const noteModal = document.getElementById('note-modal');
@@ -29,8 +30,15 @@ const noteTitleInput = document.getElementById('note-title-input');
 const noteBodyInput = document.getElementById('note-body-input');
 const closeModalBtn = document.getElementById('close-modal-btn');
 const saveNoteBtn = document.getElementById('save-note-btn');
+const insertNumListBtn = document.getElementById('insert-numbered-list-btn');
+const insertBulletListBtn = document.getElementById('insert-bullet-list-btn');
 
 // --- Helper Functions ---
+
+function formatDayOfWeek(date = new Date()) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
+}
 
 function formatDate(date = new Date()) {
     const day = String(date.getDate()).padStart(2, '0');
@@ -48,6 +56,22 @@ function formatTime(date = new Date()) {
     return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
 }
 
+function getNoteDay(note) {
+    if (note.day) return note.day;
+    if (note.created_at) {
+        const d = new Date(note.created_at);
+        if (!isNaN(d.getTime())) return formatDayOfWeek(d);
+    }
+    if (note.date) {
+        const parts = note.date.split('/');
+        if (parts.length === 3) {
+            const d = new Date(parts[2], parts[1] - 1, parts[0]);
+            if (!isNaN(d.getTime())) return formatDayOfWeek(d);
+        }
+    }
+    return formatDayOfWeek(new Date());
+}
+
 function escapeHTML(str) {
     if (!str) return '';
     return str
@@ -58,8 +82,68 @@ function escapeHTML(str) {
         .replace(/'/g, '&#039;');
 }
 
+// Convert note text into formatted HTML with real list elements (<ol>, <ul>, <li>)
+function formatNoteBodyToHTML(bodyText) {
+    if (!bodyText) return '';
+
+    const lines = bodyText.split('\n');
+    let html = '';
+    let inOl = false;
+    let inUl = false;
+
+    lines.forEach((line) => {
+        const trimmed = line.trim();
+        // 1. Numbered list line: e.g. "1.text" or "1. text"
+        const numMatch = line.match(/^(\s*)(\d+)\.\s*(.*)$/);
+        // 2. Bullet list line: e.g. ".text" or ". text" or "• text" or "- text"
+        const dotMatch = !numMatch && line.match(/^(\s*)([\u2022\-\*]|\.(?!\.))\s*(.*)$/);
+
+        if (numMatch) {
+            if (inUl) {
+                html += '</ul>';
+                inUl = false;
+            }
+            if (!inOl) {
+                html += '<ol class="note-body-list note-body-ol">';
+                inOl = true;
+            }
+            html += `<li>${escapeHTML(numMatch[3])}</li>`;
+        } else if (dotMatch) {
+            if (inOl) {
+                html += '</ol>';
+                inOl = false;
+            }
+            if (!inUl) {
+                html += '<ul class="note-body-list note-body-ul">';
+                inUl = true;
+            }
+            html += `<li>${escapeHTML(dotMatch[3])}</li>`;
+        } else {
+            if (inOl) {
+                html += '</ol>';
+                inOl = false;
+            }
+            if (inUl) {
+                html += '</ul>';
+                inUl = false;
+            }
+            if (trimmed) {
+                html += `<div class="note-body-line">${escapeHTML(line)}</div>`;
+            } else {
+                html += '<div class="note-body-spacer"></div>';
+            }
+        }
+    });
+
+    if (inOl) html += '</ol>';
+    if (inUl) html += '</ul>';
+
+    return html;
+}
+
 function updateHeaderClock() {
     const now = new Date();
+    if (headerDayEl) headerDayEl.textContent = formatDayOfWeek(now);
     if (headerDateEl) headerDateEl.textContent = formatDate(now);
     if (headerTimeEl) headerTimeEl.textContent = formatTime(now);
 }
@@ -99,14 +183,16 @@ async function fetchNotes() {
 
         if (error) {
             console.error('Supabase error fetching notes:', error.message);
-            // If table doesn't exist yet, fall back to local storage
             notes = getLocalNotes();
             renderNotes();
             return;
         }
 
-        notes = data || [];
-        saveLocalNotes(notes); // Keep local cache up to date
+        notes = (data || []).map(note => ({
+            ...note,
+            day: getNoteDay(note)
+        }));
+        saveLocalNotes(notes);
         renderNotes();
     } catch (err) {
         console.error('Failed to connect to Supabase:', err);
@@ -130,6 +216,7 @@ async function handleSaveNote() {
     const now = new Date();
     const currentDate = formatDate(now);
     const currentTime = formatTime(now);
+    const currentDay = formatDayOfWeek(now);
 
     isSaving = true;
     if (saveNoteBtn) {
@@ -138,37 +225,38 @@ async function handleSaveNote() {
     }
 
     try {
+        const notePayload = {
+            title: title || 'Untitled Note',
+            body: body,
+            date: currentDate,
+            time: currentTime
+        };
+
         if (db) {
-            if (editingNoteId) {
-                // Update in database
-                const { error } = await db
-                    .from('notes')
-                    .update({
-                        title: title || 'Untitled Note',
-                        body: body,
-                        date: currentDate,
-                        time: currentTime
-                    })
-                    .eq('id', editingNoteId);
+            let err = null;
+            try {
+                // Try sending with 'day' field
+                const res = editingNoteId
+                    ? await db.from('notes').update({ ...notePayload, day: currentDay }).eq('id', editingNoteId)
+                    : await db.from('notes').insert([{ ...notePayload, day: currentDay }]);
+                err = res.error;
+            } catch (e) {
+                err = e;
+            }
 
-                if (error) throw error;
-            } else {
-                // Insert into database
-                const { error } = await db
-                    .from('notes')
-                    .insert([{
-                        title: title || 'Untitled Note',
-                        body: body,
-                        date: currentDate,
-                        time: currentTime
-                    }]);
-
-                if (error) throw error;
+            // If Supabase schema does not yet have 'day' column (PGRST204), retry without it
+            if (err && (err.code === 'PGRST204' || (err.message && err.message.includes('day')))) {
+                const fallbackRes = editingNoteId
+                    ? await db.from('notes').update(notePayload).eq('id', editingNoteId)
+                    : await db.from('notes').insert([notePayload]);
+                if (fallbackRes.error) throw fallbackRes.error;
+            } else if (err) {
+                throw err;
             }
 
             await fetchNotes();
         } else {
-            // Local fallback
+            // Local storage fallback
             if (editingNoteId) {
                 const idx = notes.findIndex(n => String(n.id) === String(editingNoteId));
                 if (idx !== -1) {
@@ -176,6 +264,7 @@ async function handleSaveNote() {
                     notes[idx].body = body;
                     notes[idx].date = currentDate;
                     notes[idx].time = currentTime;
+                    notes[idx].day = currentDay;
                 }
             } else {
                 notes.unshift({
@@ -183,7 +272,8 @@ async function handleSaveNote() {
                     title: title || 'Untitled Note',
                     body: body,
                     date: currentDate,
-                    time: currentTime
+                    time: currentTime,
+                    day: currentDay
                 });
             }
             saveLocalNotes(notes);
@@ -259,14 +349,18 @@ function renderNotes() {
         li.className = 'note';
         li.dataset.id = note.id;
 
+        const noteDay = getNoteDay(note);
+        const formattedBodyHTML = formatNoteBodyToHTML(note.body || '');
+
         li.innerHTML = `
             <div class="note-hero">
                 <h1 class="note-header">${escapeHTML(note.title)}</h1>
                 <div id="note-timeDate">
-                    <span id="Note-date">${escapeHTML(note.date || '')}</span>
+                    <span class="dayoftheweek">${escapeHTML(noteDay)}</span>:
+                    <span id="Note-date">${escapeHTML(note.date || '')}</span>,
                     <span id="Note-time">${escapeHTML(note.time || '')}</span>
                 </div>
-                <p class="note-body">${escapeHTML(note.body || '')}</p>
+                <div class="note-body">${formattedBodyHTML}</div>
             </div>
             <div class="note-settings">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor">
@@ -360,6 +454,96 @@ function closeModal() {
     editingNoteId = null;
 }
 
+// --- Auto-List (Auto-Numbering & Auto-Bullet) in Textarea ---
+
+function setupAutoList(textarea) {
+    if (!textarea) return;
+
+    textarea.addEventListener('keydown', (e) => {
+        const isEnter = (e.key === 'Enter' || e.keyCode === 13 || e.which === 13);
+        if (isEnter && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(textarea.selectionEnd);
+
+            const lastNewline = textBefore.lastIndexOf('\n');
+            const currentLine = textBefore.substring(lastNewline + 1);
+
+            // 1. Match numbered list: e.g. "1.text", "1. text", "1."
+            const numMatch = currentLine.match(/^(\s*)(\d+)\.(\s*)(.*)$/);
+            // 2. Match dot/bullet list: e.g. ".text", ". text", "." (excluding ellipsis "...")
+            const dotMatch = !numMatch && currentLine.match(/^(\s*)([\u2022\-\*]|\.(?!\.))(\s*)(.*)$/);
+
+            if (numMatch) {
+                const indent = numMatch[1];
+                const num = parseInt(numMatch[2], 10);
+                const space = numMatch[3];
+                const content = numMatch[4];
+
+                e.preventDefault();
+
+                // If line has no text, exit the numbered list
+                if (content.trim() === '') {
+                    const lineStart = lastNewline + 1;
+                    textarea.value = textarea.value.substring(0, lineStart) + textAfter;
+                    textarea.selectionStart = textarea.selectionEnd = lineStart;
+                    return;
+                }
+
+                // Continue numbering: e.g. 1.text -> 2., 1. text -> 2. 
+                const nextPrefix = indent + (num + 1) + '.' + space;
+                const insertText = '\n' + nextPrefix;
+                textarea.value = textBefore + insertText + textAfter;
+                const newCursor = cursorPos + insertText.length;
+                textarea.selectionStart = textarea.selectionEnd = newCursor;
+                return;
+            }
+
+            if (dotMatch) {
+                const indent = dotMatch[1];
+                const bullet = dotMatch[2];
+                const space = dotMatch[3];
+                const content = dotMatch[4];
+
+                e.preventDefault();
+
+                // If line has no text, exit the dot/bullet list
+                if (content.trim() === '') {
+                    const lineStart = lastNewline + 1;
+                    textarea.value = textarea.value.substring(0, lineStart) + textAfter;
+                    textarea.selectionStart = textarea.selectionEnd = lineStart;
+                    return;
+                }
+
+                // Continue dot/bullet: e.g. .text -> ., . text -> . 
+                const nextPrefix = indent + bullet + space;
+                const insertText = '\n' + nextPrefix;
+                textarea.value = textBefore + insertText + textAfter;
+                const newCursor = cursorPos + insertText.length;
+                textarea.selectionStart = textarea.selectionEnd = newCursor;
+                return;
+            }
+        }
+    });
+}
+
+// Helper to insert list prefix from modal toolbar buttons
+function insertListPrefix(prefix) {
+    if (!noteBodyInput) return;
+    noteBodyInput.focus();
+    const cursorPos = noteBodyInput.selectionStart;
+    const textBefore = noteBodyInput.value.substring(0, cursorPos);
+    const textAfter = noteBodyInput.value.substring(noteBodyInput.selectionEnd);
+
+    // If not at the beginning of a line, insert on a new line
+    const needsNewline = cursorPos > 0 && textBefore[cursorPos - 1] !== '\n';
+    const textToInsert = (needsNewline ? '\n' : '') + prefix;
+
+    noteBodyInput.value = textBefore + textToInsert + textAfter;
+    const newPos = cursorPos + textToInsert.length;
+    noteBodyInput.selectionStart = noteBodyInput.selectionEnd = newPos;
+}
+
 // --- Live Realtime Synchronization ---
 
 function setupRealtime() {
@@ -379,7 +563,7 @@ function setupRealtime() {
 // --- App Initialization ---
 
 function init() {
-    // 1. Clock
+    // 1. Clock and Day of Week
     updateHeaderClock();
     setInterval(updateHeaderClock, 1000);
 
@@ -389,7 +573,18 @@ function init() {
     // 3. Listen for realtime database changes across all devices
     setupRealtime();
 
-    // 4. Modal event listeners
+    // 4. Setup auto-numbering and auto-bulleting in note body textarea
+    setupAutoList(noteBodyInput);
+
+    // 5. Connect list toolbar buttons
+    if (insertNumListBtn) {
+        insertNumListBtn.addEventListener('click', () => insertListPrefix('1. '));
+    }
+    if (insertBulletListBtn) {
+        insertBulletListBtn.addEventListener('click', () => insertListPrefix('. '));
+    }
+
+    // 6. Modal event listeners
     if (addNoteBtn) {
         addNoteBtn.addEventListener('click', () => openModal(null));
     }
