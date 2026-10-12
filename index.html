@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSD NOTES</title>
+    <link rel="stylesheet" href="STYLE/index.css">
+</head>
+<body>
+    <div class="fullscreen">
+        <h1>MSD NOTES <br> please youse a mobile phone</h1>
+    </div>
+   <div class="smallscreen">
+    <div class="top-header">
+        <h1>MSD NOTES <br> <span id="date">09/10/2026</span>,<span id="time">12:00 PM</span></h1>
+    </div>
+    <div class="main">
+        <div class="hero">
+            <ul class="hero-list">
+                <button id="add-notes" class="add-note">
+                   add note
+                </button>
+                <li class="note">
+                    <div class="note-hero">
+                        <h1 class="note-header">bishop filling station</h1>
+                        <div id="note-timeDate"><span id="Note-date">09/10/2026</span><span id="Note-time">12:00 PM</span></div>
+                        <p class="note-body">This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                        </p>
+                    </div>
+                    <div class="note-settings">
+                        <svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 -960 960 960"  fill="CurrentColor">
+                            <path
+                                d="M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z" />
+                        </svg>
+                        <div class="The-settings-options">
+                            <div class="note-edit">Edit</div>
+                            <div class="note-delete">Delete</div>
+                        </div>
+                        
+                    </div>
+                </li>
+                <li class="note">
+                    <div class="note-hero">
+                        <h1 class="note-header">bishop filling station</h1>
+                        <div id="note-timeDate"><span id="Note-date">09/10/2026</span><span id="Note-time">12:00 PM</span></div>
+                        <p class="note-body">This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                        </p>
+                    </div>
+                    <div class="note-settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="CurrentColor">
+                            <path
+                                d="M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z" />
+                        </svg>
+                        <div class="The-settings-options">
+                            <div class="note-edit">Edit</div>
+                            <div class="note-delete">Delete</div>
+                        </div>
+                
+                    </div>
+                </li>
+                <li class="note">
+                    <div class="note-hero">
+                        <h1 class="note-header">bishop filling station</h1>
+                        <div id="note-timeDate"><span id="Note-date">09/10/2026</span><span id="Note-time">12:00 PM</span></div>
+                        <p class="note-body">This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                            This is a sample note for the bishop filling station.
+                        </p>
+                    </div>
+                    <div class="note-settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="CurrentColor">
+                            <path
+                                d="M240-400q-33 0-56.5-23.5T160-480q0-33 23.5-56.5T240-560q33 0 56.5 23.5T320-480q0 33-23.5 56.5T240-400Zm240 0q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm240 0q-33 0-56.5-23.5T640-480q0-33 23.5-56.5T720-560q33 0 56.5 23.5T800-480q0 33-23.5 56.5T720-400Z" />
+                        </svg>
+                        <div class="The-settings-options">
+                            <div class="note-edit">Edit</div>
+                            <div class="note-delete">Delete</div>
+                        </div>
+                
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    </div>
+    <div class="footer">
+        <p>MSD NOTES &copy; 2026</p>
+    </div>
+
+    <!-- Add / Edit Note Modal Popup -->
+    <div id="note-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title">Add Note</h2>
+            <div class="input-group">
+                <label for="note-title-input">Title</label>
+                <input type="text" id="note-title-input" placeholder="Note title..." />
+            </div>
+            <div class="input-group">
+                <label for="note-body-input">Content</label>
+                <textarea id="note-body-input" placeholder="Type your note here..." rows="5"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" id="close-modal-btn">Cancel</button>
+                <button type="button" id="save-note-btn">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script/index.js"></script>
+</body>
+</html>
